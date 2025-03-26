@@ -3,44 +3,62 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans, BisectingKMeans
 from sklearn.preprocessing import StandardScaler
 
-iris = pd.read_csv('iris.csv')
-netflix = pd.read_csv('netflix.csv')
+# Carregar os dados
+df_iris = pd.read_csv('iris.csv')
+df_wine = pd.read_csv('wine.csv')
 
-x1 = iris[['sepal.length', 'sepal.width']]
-x2 = netflix[['show_id','duration']]
+# Selecionar as duas primeiras colunas para visualização
+X_iris = df_iris.iloc[:, :2].values
+X_wine = df_wine.iloc[:, :2].values
 
+# Padronizar os dados para melhorar o clustering
 scaler = StandardScaler()
+X_iris = scaler.fit_transform(X_iris)
+X_wine = scaler.fit_transform(X_wine)
 
-x1_scaled = scaler.fit_transform(x1)
-x2_scaled = scaler.fit_transform(x2)
+# Aplicar KMeans e Bisecting KMeans nos dois conjuntos de dados
+kmeans_iris = KMeans(n_clusters=5, random_state=42)
+kmeans_iris.fit(X_iris)
+y_kmeans_iris = kmeans_iris.predict(X_iris)
 
-num_clusters = 3
+bisect_kmeans_iris = BisectingKMeans(n_clusters=5, random_state=42)
+bisect_kmeans_iris.fit(X_iris)
+y_bisect_kmeans_iris = bisect_kmeans_iris.predict(X_iris)
 
+kmeans_wine = KMeans(n_clusters=5, random_state=42)
+kmeans_wine.fit(X_wine)
+y_kmeans_wine = kmeans_wine.predict(X_wine)
 
-kmeans1 = KMeans(n_clusters=num_clusters, random_state=42)
-iris['kmeans_cluster'] = kmeans1.fit_predict(X1_scaled)
+bisect_kmeans_wine = BisectingKMeans(n_clusters=5, random_state=42)
+bisect_kmeans_wine.fit(X_wine)
+y_bisect_kmeans_wine = bisect_kmeans_wine.predict(X_wine)
 
-kmeans2 = KMeans(n_clusters=num_clusters, random_state=42)
-netflix['kmeans_cluster'] = kmeans2.fit_predict(X2_scaled)
+# Criar subplots
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
+# Plotar KMeans para Iris
+axes[0, 0].scatter(X_iris[:, 0], X_iris[:, 1], c=y_kmeans_iris, cmap='viridis')
+axes[0, 0].set_title('KMeans - Iris')
+axes[0, 0].set_xlabel("Altura Sépala (padronizada)")
+axes[0, 0].set_ylabel("Largura Sépala (padronizada)")
 
-bisecting_kmeans1 = BisectingKMeans(n_clusters=num_clusters, random_state=42)
-iris['bisecting_cluster'] = bisecting_kmeans1.fit_predict(X1_scaled)
+# Plotar Bisecting KMeans para Iris
+axes[0, 1].scatter(X_iris[:, 0], X_iris[:, 1], c=y_bisect_kmeans_iris, cmap='viridis')
+axes[0, 1].set_title('Bisecting KMeans - Iris')
+axes[0, 1].set_xlabel("Altura Sépala")
+axes[0, 1].set_ylabel("Largura Sépala")
 
-bisecting_kmeans2 = BisectingKMeans(n_clusters=num_clusters, random_state=42)
-netflix['bisecting_cluster'] = bisecting_kmeans2.fit_predict(X2_scaled)
+# Plotar KMeans para Wine
+axes[1, 0].scatter(X_wine[:, 0], X_wine[:, 1], c=y_kmeans_wine, cmap='viridis')
+axes[1, 0].set_title('KMeans - Wine')
+axes[1, 0].set_xlabel("Alcohol")
+axes[1, 0].set_ylabel("Malic acid")
 
-def plot_clusters(X, labels, title, fig_num):
-    plt.figure(fig_num)  # Criar uma aba separada
-    plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', edgecolors='k')
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title(title)
-    plt.grid()
+# Plotar Bisecting KMeans para Wine
+axes[1, 1].scatter(X_wine[:, 0], X_wine[:, 1], c=y_bisect_kmeans_wine, cmap='viridis')
+axes[1, 1].set_title('Bisecting KMeans - Wine')
+axes[1, 1].set_xlabel("Alcohol")
+axes[1, 1].set_ylabel("Malic acid")
 
-plot_clusters(X1_scaled, iris['kmeans_cluster'], "K-Means - Dataset 1", 1)
-plot_clusters(X1_scaled, iris['bisecting_cluster'], "Bisecting K-Means - Dataset 1", 2)
-plot_clusters(X2_scaled, netflix['kmeans_cluster'], "K-Means - Dataset 2", 3)
-plot_clusters(X2_scaled, netflix['bisecting_cluster'], "Bisecting K-Means - Dataset 2", 4)
-
+plt.tight_layout()
 plt.show()
