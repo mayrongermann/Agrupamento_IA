@@ -1,15 +1,19 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.datasets import load_wine
 from sklearn.cluster import KMeans, BisectingKMeans
 from sklearn.preprocessing import StandardScaler
 
 # Carregar os dados
-df_iris = pd.read_csv('iris.csv')
-df_wine = pd.read_csv('wine.csv')
+data_x = load_iris()
+df_iris = data_x['data']  # Acesso correto ao atributo 'data'
+data_y = load_wine()
+df_wine = data_y['data']  # Acesso correto ao atributo 'data'
 
 # Selecionar as duas primeiras colunas para visualização
-X_iris = df_iris.iloc[:, :2].values
-X_wine = df_wine.iloc[:, :2].values
+X_iris = df_iris[:, :2]  # Usando numpy para acessar as colunas diretamente
+X_wine = df_wine[:, :2]  # Usando numpy para acessar as colunas diretamente
 
 # Padronizar os dados para melhorar o clustering
 scaler = StandardScaler()
