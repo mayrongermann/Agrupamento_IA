@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage
 from sklearn.datasets import load_iris
 from sklearn.datasets import load_wine
 from sklearn.cluster import KMeans, BisectingKMeans
@@ -37,8 +38,12 @@ bisect_kmeans_wine = BisectingKMeans(n_clusters=5, random_state=42)
 bisect_kmeans_wine.fit(X_wine)
 y_bisect_kmeans_wine = bisect_kmeans_wine.predict(X_wine)
 
+# Gerar linkage para dendrograma do Bisecting KMeans
+linkage_iris = linkage(X_iris, method='ward')
+linkage_wine = linkage(X_wine, method='ward')
+
 # Criar subplots
-fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+fig, axes = plt.subplots(2, 3, figsize=(12, 15))
 
 # Plotar KMeans para Iris
 axes[0, 0].scatter(X_iris[:, 0], X_iris[:, 1], c=y_kmeans_iris, cmap='viridis')
@@ -52,6 +57,12 @@ axes[0, 1].set_title('Bisecting KMeans - Iris')
 axes[0, 1].set_xlabel("Altura Sépala")
 axes[0, 1].set_ylabel("Largura Sépala")
 
+# Plotar dendrograma para Bisecting KMeans Iris
+axes[0, 2].set_title('Dendrograma - Bisecting KMeans - Iris')
+dendrogram(linkage_iris, ax=axes[0, 2])
+axes[0, 2].set_xlabel('Índices dos pontos de dados')
+axes[0, 2].set_ylabel('Distância')
+
 # Plotar KMeans para Wine
 axes[1, 0].scatter(X_wine[:, 0], X_wine[:, 1], c=y_kmeans_wine, cmap='viridis')
 axes[1, 0].set_title('KMeans - Wine')
@@ -63,6 +74,12 @@ axes[1, 1].scatter(X_wine[:, 0], X_wine[:, 1], c=y_bisect_kmeans_wine, cmap='vir
 axes[1, 1].set_title('Bisecting KMeans - Wine')
 axes[1, 1].set_xlabel("Alcohol")
 axes[1, 1].set_ylabel("Malic acid")
+
+# Plotar dendrograma para Bisecting KMeans Wine
+axes[1, 2].set_title('Dendrograma - Bisecting KMeans - Wine')
+dendrogram(linkage_wine, ax=axes[1, 2])
+axes[1, 2].set_xlabel('Índices dos pontos de dados')
+axes[1, 2].set_ylabel('Distância')
 
 plt.tight_layout()
 plt.show()
