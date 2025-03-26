@@ -1,101 +1,95 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.cluster import KMeans, BisectingKMeans, AgglomerativeClustering
-from sklearn.metrics import silhouette_score
+from scipy.cluster.hierarchy import dendrogram
+from sklearn.cluster import KMeans, BisectingKMeans
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.preprocessing import StandardScaler
-from scipy.cluster.hierarchy import dendrogram, linkage
-from sklearn.datasets import load_iris
+from sklearn.datasets import load_iris, load_wine
+from kneed import KneeLocator
 
-# =======================
+# ============================
 # 1️⃣ Carregar os Dados
-# =======================
+# ============================
+data_iris = load_iris()
+X_iris = data_iris['data']
+y_iris = data_iris['target']
+feature_names_iris = data_iris['feature_names']
 
-# Base Iris
-iris = load_iris()
-X_iris = iris.data  # Apenas os dados, sem rótulos
+data_wine = load_wine()
+X_wine = data_wine['data']
+y_wine = data_wine['target']
+feature_names_wine = data_wine['feature_names']
 
-# Base Netflix
-df_netflix = pd.read_csv("/home/paolants/Documentos/GitHub/Agrupamento_IA/netflix.csv")
-
-# Converter a coluna "duration" para número (minutos)
-def convert_duration(value):
-    if "min" in str(value):
-        return int(value.split()[0])  # Pega só o número (ex: "90 min" -> 90)
-    elif "Season" in str(value):
-        return int(value.split()[0]) * 600  # Exemplo: 1 temporada = 600 min
-    else:
-        return np.nan
-
-df_netflix["duration_numeric"] = df_netflix["duration"].apply(convert_duration)
-df_netflix = df_netflix.dropna(subset=["duration_numeric"])  # Remove valores nulos
-
-# Selecionar colunas relevantes
-X_netflix = df_netflix[['release_year', 'duration_numeric']]
-
-# =======================
+# ============================
 # 2️⃣ Normalizar os Dados
-# =======================
+# ============================
 scaler = StandardScaler()
-X_iris_scaled = scaler.fit_transform(X_iris)
-X_netflix_scaled = scaler.fit_transform(X_netflix)
+X_iris = scaler.fit_transform(X_iris)
+X_wine = scaler.fit_transform(X_wine)
 
-# =======================
-# 3️⃣ Definir Função de Agrupamento
-# =======================
-def aplicar_algoritmos(X, nome_base):
-    print(f"\n===== {nome_base} =====")
-
-    # K-Means com definição do melhor K (Elbow Method)
+# ============================
+# 3️⃣ Definir Melhor Número de Clusters (Elbow Method)
+# ============================
+def find_optimal_k(X):
     distortions = []
-    for k in range(2, 10):
-        kmeans = KMeans(n_clusters=k, random_state=42)
+    K_range = range(2, 10)
+    for k in K_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
         kmeans.fit(X)
         distortions.append(kmeans.inertia_)
 
-    # Plot do método do cotovelo
-    plt.figure()
-    plt.plot(range(2, 10), distortions, marker='o')
-    plt.xlabel("Número de Clusters")
-    plt.ylabel("Inertia")
-    plt.title(f"Elbow Method - {nome_base}")
-    plt.show()
+    kn = KneeLocator(K_range, distortions, curve="convex", direction="decreasing")
+    return kn.elbow
 
-    # Escolher K ótimo (exemplo: 3)
-    k_optimal = 3
-    kmeans = KMeans(n_clusters=k_optimal, random_state=42)
-    clusters_kmeans = kmeans.fit_predict(X)
+k_iris = find_optimal_k(X_iris)
+k_wine = find_optimal_k(X_wine)
+print(f"Número ideal de clusters para Iris: {k_iris}")
+print(f"Número ideal de clusters para Wine: {k_wine}")
+
+# ============================
+# 4️⃣ Aplicar Algoritmos de Agrupamento
+# ============================
+def apply_clustering(X, k, dataset_name, feature_names):
+    print(f"\n===== {dataset_name} =====")
     
+    # K-Means
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+    clusters_kmeans = kmeans.fit_predict(X)
+
     # Bisecting K-Means
-    bisect_kmeans = BisectingKMeans(n_clusters=k_optimal, random_state=42)
+    bisect_kmeans = BisectingKMeans(n_clusters=k, random_state=42, n_init=10)
     clusters_bisecting = bisect_kmeans.fit_predict(X)
 
-    # Clustering Hierárquico
-    hierarquico = AgglomerativeClustering(n_clusters=k_optimal)
-    clusters_hierarquico = hierarquico.fit_predict(X)
+    # Avaliação das Métricas
+    print(f"K-Means Silhouette Score: {silhouette_score(X, clusters_kmeans):.2f}")
+    print(f"Bisecting K-Means Silhouette Score: {silhouette_score(X, clusters_bisecting):.2f}")
+    print(f"K-Means Davies-Bouldin Score: {davies_bouldin_score(X, clusters_kmeans):.2f}")
+    print(f"K-Means Calinski-Harabasz Score: {calinski_harabasz_score(X, clusters_kmeans):.2f}")
 
-    # Mostrar Silhouette Score
-    print(f"K-Means Silhouette: {silhouette_score(X, clusters_kmeans):.2f}")
-    print(f"Bisecting K-Means Silhouette: {silhouette_score(X, clusters_bisecting):.2f}")
-    print(f"Hierarchical Clustering Silhouette: {silhouette_score(X, clusters_hierarquico):.2f}")
+    # Criar Gráficos
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
-    # Plot dos clusters K-Means
-    plt.figure()
-    plt.scatter(X[:, 0], X[:, 1], c=clusters_kmeans, cmap="viridis", alpha=0.6)
-    plt.title(f"K-Means Clusters - {nome_base}")
-    plt.xlabel("Feature 1")
-    plt.ylabel("Feature 2")
+    # Plot K-Means
+    axes[0].scatter(X[:, 0], X[:, 1], c=clusters_kmeans, cmap="viridis", alpha=0.6)
+    axes[0].set_title(f"K-Means Clusters - {dataset_name}")
+    axes[0].set_xlabel(feature_names[0])
+    axes[0].set_ylabel(feature_names[1])
+
+    # Plot Bisecting K-Means
+    axes[1].scatter(X[:, 0], X[:, 1], c=clusters_bisecting, cmap="viridis", alpha=0.6)
+    axes[1].set_title(f"Bisecting K-Means Clusters - {dataset_name}")
+    axes[1].set_xlabel(feature_names[0])
+    axes[1].set_ylabel(feature_names[1])
+    
+    from scipy.cluster.hierarchy import linkage
+    Z = linkage(X, method='ward')
+    dendrogram(Z, ax=axes[2])
+    axes[2].set_title(f"Dendrograma - {dataset_name}")
+    
+    plt.tight_layout()
     plt.show()
 
-    # Plot do dendrograma para agrupamento hierárquico
-    plt.figure()
-    dendrogram(linkage(X, method='ward'))
-    plt.title(f"Dendrograma - {nome_base}")
-    plt.show()
-
-# =======================
-# 4️⃣ Aplicar os Algoritmos
-# =======================
-aplicar_algoritmos(X_iris_scaled, "Iris")
-aplicar_algoritmos(X_netflix_scaled, "Netflix")
+# Aplicar nos datasets
+apply_clustering(X_iris, k_iris, "Iris", feature_names_iris)
+apply_clustering(X_wine, k_wine, "Wine", feature_names_wine)
