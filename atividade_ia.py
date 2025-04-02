@@ -10,52 +10,7 @@ from kneed import KneeLocator
 from sklearn.decomposition import PCA
 from scipy.optimize import linear_sum_assignment
 import seaborn as sns
-import urllib.request
-
-# Baixar o dataset Seeds diretamente da URL
-url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00236/seeds_dataset.txt"
-urllib.request.urlretrieve(url, "seeds_dataset.txt")
-
-# Carregar o dataset Seeds
-data = pd.read_csv("seeds_dataset.txt", sep='\s+', header=None)
-
-# Nomeando as colunas
-columns = ['Area', 'Perimeter', 'Compactness', 'Kernel Length', 'Kernel Width',
-           'Asymmetry Coefficient', 'Kernel Groove Length', 'Class']
-data.columns = columns
-
-# Separar features (apenas as variáveis explicativas)
-X_seeds = data.iloc[:, :-1]
-
-# Calcular a matriz de correlação
-corr_matrix = X_seeds.corr()
-
-# Plotar a matriz de correlação
-plt.figure(figsize=(8, 6))
-sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm")
-plt.title("Matriz de Correlação do Dataset Seeds")
-plt.show()
-
-# Exibir a matriz de correlação no terminal
-print("Matriz de Correlação do Dataset Seeds:")
-print(corr_matrix)
-
-# Normalizar os dados do dataset Seeds
-scaler = StandardScaler()
-X_seeds_normalized = scaler.fit_transform(X_seeds)
-
-# Gerar o pairplot do dataset Seeds
-def generate_pairplot_from_dataframe(df, dataset_name):
-    # Normalizar os dados
-    scaler = StandardScaler()
-    df_normalized = pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
-
-    # Gerar o pairplot
-    sns.pairplot(df_normalized, diag_kind='kde', plot_kws={'alpha': 0.6})
-    plt.suptitle(f"Pairplot do Dataset {dataset_name} (Normalizado)", y=1.02)
-    plt.show()
-
-generate_pairplot_from_dataframe(X_seeds, "Seeds")
+import matplotlib
 
 # Carregar os dados Iris e Wine
 data_iris = load_iris()
@@ -90,28 +45,16 @@ df_wine.fillna(0, inplace=True)
 
 # Padronizar os dados
 scaler = StandardScaler()
-X_iris = scaler.fit_transform(df_iris)
-X_wine = scaler.fit_transform(df_wine)
-
-# Função para plotar os dados originais
-def plot_raw_data(df, dataset_name):
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df.iloc[:, 0], df.iloc[:, 1], alpha=0.6)
-    plt.xlabel(df.columns[0])
-    plt.ylabel(df.columns[1])
-    plt.title(f"Distribuição Original dos Dados - {dataset_name}")
-    plt.show()
-
-plot_raw_data(df_iris, "Iris")
-plot_raw_data(df_wine, "Wine")
+X_iris_scaled = scaler.fit_transform(df_iris)
+X_wine_scaled = scaler.fit_transform(df_wine)
 
 # Reduzir dimensionalidade com PCA
 pca = PCA(n_components=3)
-X_iris_pca = pca.fit_transform(X_iris)
-X_wine_pca = pca.fit_transform(X_wine)
+X_iris_pca = pca.fit_transform(X_iris_scaled)
+X_wine_pca = pca.fit_transform(X_wine_scaled)
 
-# Função para encontrar o número ideal de clusters
-def find_optimal_k(X):
+# Função para gerar o gráfico de cotovelo
+def plot_elbow_curve(X, dataset_name):
     distortions = []
     K_range = range(2, 10)
     for k in K_range:
@@ -120,12 +63,34 @@ def find_optimal_k(X):
         distortions.append(kmeans.inertia_)
     
     kn = KneeLocator(K_range, distortions, curve="convex", direction="decreasing")
+    
+    plt.figure(figsize=(8, 5))
+    plt.plot(K_range, distortions, marker='o', linestyle='--', color='b')
+    plt.xlabel('Número de Clusters (k)')
+    plt.ylabel('Distorção (Inércia)')
+    plt.title(f"Gráfico de Cotovelo - {dataset_name}")
+    plt.axvline(x=kn.elbow, color='r', linestyle='--', label=f"Cotovelo: k={kn.elbow}")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"elbow_curve_{dataset_name.lower()}.png")  # Salvar o gráfico
+    plt.show()
     return kn.elbow
 
-k_iris = find_optimal_k(X_iris_pca)
-k_wine = find_optimal_k(X_wine_pca)
-print(f"Número ideal de clusters para Iris: {k_iris}")
-print(f"Número ideal de clusters para Wine: {k_wine}")
+# Função para gerar a matriz de correlação
+def plot_correlation_matrix(df, dataset_name):
+    corr_matrix = df.corr()
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm")
+    plt.title(f"Matriz de Correlação - {dataset_name}")
+    plt.savefig(f"correlation_matrix_{dataset_name.lower()}.png")  # Salvar o gráfico
+    plt.show()
+
+# Função para gerar o pairplot
+def plot_pairplot(df, dataset_name):
+    sns.pairplot(df, diag_kind='kde', plot_kws={'alpha': 0.6})
+    plt.suptitle(f"Pairplot - {dataset_name}", y=1.02)
+    plt.savefig(f"pairplot_{dataset_name.lower()}.png")  # Salvar o gráfico
+    plt.show()
 
 # Função para aplicar os algoritmos de clustering
 def apply_clustering(X, k, dataset_name, feature_names):
@@ -159,31 +124,8 @@ def apply_clustering(X, k, dataset_name, feature_names):
     axes[2].set_title(f"Dendrograma - {dataset_name}")
     
     plt.tight_layout()
+    plt.savefig(f"clustering_{dataset_name.lower()}.png")  # Salvar o gráfico
     plt.show()
-
-    
-def plot_elbow_curve(X, dataset_name):
-    distortions = []
-    K_range = range(2, 10)
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-        kmeans.fit(X)
-        distortions.append(kmeans.inertia_)
-    
-    kn = KneeLocator(K_range, distortions, curve="convex", direction="decreasing")
-    
-    
-    plt.figure(figsize=(8, 5))
-    plt.plot(K_range, distortions, marker='o', linestyle='--', color='b')
-    plt.xlabel('Número de Clusters (k)')
-    plt.ylabel('Distorção (Inércia)')
-    plt.title(f"Gráfico de Cotovelo - {dataset_name}")
-    plt.axvline(x=kn.elbow, color='r', linestyle='--', label=f"Cotovelo: k={kn.elbow}")
-    plt.legend()
-    plt.grid()
-    plt.show()
-    
-    return kn.elbow
 
 # Função para gerar o gráfico de silhueta
 def plot_silhouette(X, labels, dataset_name):
@@ -210,58 +152,19 @@ def plot_silhouette(X, labels, dataset_name):
     plt.title(f"Gráfico de Silhueta - {dataset_name}")
     plt.legend()
     plt.grid()
+    plt.savefig(f"silhouette_{dataset_name.lower()}.png")  # Salvar o gráfico
     plt.show()
 
-# Função para gerar e exibir a matriz de confusão
-def plot_confusion_matrix(y_true, y_pred, dataset_name):
-    # Ajustar os rótulos previstos para corresponderem aos rótulos verdadeiros
-    contingency_matrix = confusion_matrix(y_true, y_pred)
-    row_ind, col_ind = linear_sum_assignment(-contingency_matrix)
-    adjusted_pred = np.zeros_like(y_pred)
-    for i, j in zip(row_ind, col_ind):
-        adjusted_pred[y_pred == j] = i
-
-    # Gerar a matriz de confusão ajustada
-    adjusted_confusion_matrix = confusion_matrix(y_true, adjusted_pred)
-
-    # Exibir a matriz de confusão no formato desejado
-    print(f"\nMatriz de Confusão - {dataset_name}:")
-    print(f"{adjusted_confusion_matrix}")
-
-    # Plotar a matriz de confusão
-    plt.figure(figsize=(6, 5))
-    plt.imshow(adjusted_confusion_matrix, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title(f"Matriz de Confusão - {dataset_name}")
-    plt.colorbar()
-    plt.xticks(np.arange(len(np.unique(y_true))), np.unique(y_true))
-    plt.yticks(np.arange(len(np.unique(y_true))), np.unique(y_true))
-    plt.ylabel('Rótulos Verdadeiros')
-    plt.xlabel('Rótulos Previstos')
-
-    # Adicionar os números em cada bloco
-    for i in range(adjusted_confusion_matrix.shape[0]):
-        for j in range(adjusted_confusion_matrix.shape[1]):
-            plt.text(j, i, adjusted_confusion_matrix[i, j],
-                     horizontalalignment="center",
-                     color="white" if adjusted_confusion_matrix[i, j] > adjusted_confusion_matrix.max() / 2 else "black")
-
-    plt.tight_layout()
-    plt.show()
-
-k_iris = plot_elbow_curve(X_iris_pca, "Iris")
-k_wine = plot_elbow_curve(X_wine_pca, "Wine")
-
-print(f"Número ideal de clusters para Iris: {k_iris}")
-print(f"Número ideal de clusters para Wine: {k_wine}")
-
-# Aplicar clustering nos dados Iris
-kmeans_iris = KMeans(n_clusters=k_iris, random_state=42, n_init=10).fit(X_iris_pca)
+# Gerar gráficos para o dataset Iris
+print("\n=== Gerando gráficos para o dataset Iris ===")
+k_iris = plot_elbow_curve(X_iris_scaled, "Iris")
+plot_correlation_matrix(df_iris, "Iris")
+plot_pairplot(df_iris, "Iris")
 apply_clustering(X_iris_pca, k_iris, "Iris", feature_names_iris)
-plot_silhouette(X_iris_pca, kmeans_iris.labels_, "Iris")
-plot_confusion_matrix(y_iris, kmeans_iris.labels_, "Iris")
 
-# Aplicar clustering nos dados Wine
-kmeans_wine = KMeans(n_clusters=k_wine, random_state=42, n_init=10).fit(X_wine_pca)
+# Gerar gráficos para o dataset Wine
+print("\n=== Gerando gráficos para o dataset Wine ===")
+k_wine = plot_elbow_curve(X_wine_scaled, "Wine")
+plot_correlation_matrix(df_wine, "Wine")
+plot_pairplot(df_wine, "Wine")
 apply_clustering(X_wine_pca, k_wine, "Wine", feature_names_wine)
-plot_silhouette(X_wine_pca, kmeans_wine.labels_, "Wine")
-plot_confusion_matrix(y_wine, kmeans_wine.labels_, "Wine")
